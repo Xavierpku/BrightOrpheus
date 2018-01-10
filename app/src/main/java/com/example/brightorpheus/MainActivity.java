@@ -5,6 +5,8 @@ import android.content.SharedPreferences;
 import android.preference.PreferenceManager;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.view.View;
+import android.widget.Button;
 import android.widget.TextView;
 
 import java.io.BufferedReader;
@@ -27,14 +29,14 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         responseText = (TextView)findViewById(R.id.response_text);
-        editor = getSharedPreferences("data",MODE_PRIVATE).edit();
-        SharedPreferences pref = getSharedPreferences("data",MODE_PRIVATE);
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
+        editor=prefs.edit();
 
         /*
         *如果是第一次打开APP的话，需要向服务器提交自己的Mac地址，然后保存服务器返回的自己的ID，并将自己的ID保存到
         *起来，方便后面进行调用
          */
-        if(pref.getBoolean("isFirstOpen",true)==true){
+        if(prefs.getBoolean("isFirstOpen",true)==true){
             sendMacAddressWithHttpURLConnection();
             editor.putBoolean("isFirstOpen",false).commit();
         }
@@ -42,9 +44,8 @@ public class MainActivity extends AppCompatActivity {
         /*
         *检查完是否是第一次打开此App后，执行活动切换操作，展示另一个活动
          */
-        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
-        if(prefs.getString("weather",null)!=null){
-            Intent intent = new Intent(this, MusicActivity.class);
+        if(prefs.getString("music",null)==null){
+            Intent intent = new Intent(MainActivity.this, MusicActivity.class);
             startActivity(intent);
             finish();
         }
