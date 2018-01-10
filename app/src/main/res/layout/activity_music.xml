@@ -25,6 +25,10 @@
 
             <include layout="@layout/webview"/>
 
+            <include layout="@layout/operate"/>
+
+            <include layout="@layout/introduction"/>
+
         </LinearLayout>
 
     </ScrollView>

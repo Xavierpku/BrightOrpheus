@@ -18,6 +18,8 @@ import java.io.LineNumberReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
 
+import static android.R.attr.data;
+
 public class MainActivity extends AppCompatActivity {
 
     TextView responseText;
@@ -45,7 +47,9 @@ public class MainActivity extends AppCompatActivity {
         *检查完是否是第一次打开此App后，执行活动切换操作，展示另一个活动
          */
         if(prefs.getString("music",null)==null){
+            String data=prefs.getString("Id","0");
             Intent intent = new Intent(MainActivity.this, MusicActivity.class);
+            intent.putExtra("extra_data",data);
             startActivity(intent);
             finish();
         }

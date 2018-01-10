@@ -5,8 +5,8 @@
         android:title="Add"/>
     <item
         android:id="@+id/Yesterday"
-        android:title="The last day"/>
+        android:title="Last"/>
     <item
         android:id="@+id/tomorrow"
-        android:title="The next day"/>
+        android:title="Next"/>
 </menu>

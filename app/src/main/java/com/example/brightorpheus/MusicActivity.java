@@ -1,5 +1,6 @@
 package com.example.brightorpheus;
 
+import android.content.Intent;
 import android.content.SharedPreferences;
 import android.graphics.Color;
 import android.os.Build;
@@ -31,6 +32,7 @@ import java.io.UnsupportedEncodingException;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.net.URLEncoder;
+import java.util.Deque;
 
 import okhttp3.Call;
 import okhttp3.Callback;
@@ -53,6 +55,22 @@ public class MusicActivity extends AppCompatActivity{
 
     private EditText editText;
 
+    private int[] song_list = new int[1000];
+
+    private int usr_id;
+
+    private int now_pointer;
+
+    private SharedPreferences.Editor editor;
+
+    private WebView introduction_view;
+
+    private Button add;
+
+    private Button last;
+
+    private Button next;
+
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -63,19 +81,42 @@ public class MusicActivity extends AppCompatActivity{
             getWindow().setStatusBarColor(Color.TRANSPARENT);
         }*/
         setContentView(R.layout.activity_music);
+        /*
+        *每次打开之前先获取指示当前时间的指针
+         */
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
+        now_pointer=prefs.getInt("now_pointer",0);
+        editor = prefs.edit();
+
+
+        Intent intent = getIntent();
+        String data =intent.getStringExtra("extra_data");
+        usr_id=StrtoInt(data);
 
 
         musicLayout = (ScrollView)findViewById(R.id.music_layout);
         song_Id = 1;
         button_search = (Button)findViewById(R.id.button_search);
+        add = (Button)findViewById(R.id.add_operate);
+        last = (Button)findViewById(R.id.last_song);
+        next = (Button)findViewById(R.id.next_song);
         editText = (EditText)findViewById(R.id.edit_text);
+
         webView = (WebView)findViewById(R.id.web_view);
         webView.getSettings().setJavaScriptEnabled(true);
         webView.setWebViewClient(new WebViewClient());
-        webView.loadUrl("http://wlsx.huyunfan.cn");
+
+        introduction_view = (WebView) findViewById(R.id.introduction);
+        introduction_view.getSettings().setJavaScriptEnabled(true);
+
         musicLayout.setVisibility(View.VISIBLE);
 
-        webview_show(1);
+
+        song_list[0]=1;
+        sendRequestforRecommend();
+        song_Id = song_list[now_pointer];
+        webview_show(song_Id);
+
         button_search.setOnClickListener(new View.OnClickListener(){
             @Override
             public void onClick(View v) {
@@ -91,8 +132,38 @@ public class MusicActivity extends AppCompatActivity{
             }
         });
 
-        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
+        add.setOnClickListener(new View.OnClickListener(){
+            @Override
+            public void onClick(View v) {
+                sendRequestforAdd(song_Id);
+                Toast.makeText(MusicActivity.this,"Added it to your collection",Toast.LENGTH_SHORT).show();
+            }
+        });
 
+        last.setOnClickListener(new View.OnClickListener(){
+            @Override
+            public void onClick(View v) {
+                if(now_pointer>0) {
+                    now_pointer--;
+                    song_Id = song_list[now_pointer];
+                    Toast.makeText(MusicActivity.this, "Last one", Toast.LENGTH_SHORT).show();
+                    webview_show(song_Id);
+                }
+                else{
+                    Toast.makeText(MusicActivity.this, "No more", Toast.LENGTH_SHORT).show();
+                }
+            }
+        });
+
+        next.setOnClickListener(new View.OnClickListener(){
+            @Override
+            public void onClick(View v) {
+                now_pointer++;
+                song_Id = song_list[now_pointer];
+                Toast.makeText(MusicActivity.this,"Next one",Toast.LENGTH_SHORT).show();
+                webview_show(song_Id);
+            }
+        });
         bingPicImg = (ImageView)findViewById(R.id.bing_pic_img);
         String bingPic = prefs.getString("bing_pic",null);
         if(bingPic!=null){
@@ -101,6 +172,8 @@ public class MusicActivity extends AppCompatActivity{
         else{
             loadBingPic();
         }
+
+        editor.putInt("now_pointer",now_pointer);
     }
 
     /*
@@ -153,13 +226,25 @@ public class MusicActivity extends AppCompatActivity{
     public boolean onOptionsItemSelected(MenuItem item) {
         switch (item.getItemId()){
             case R.id.Add:
-                Toast.makeText(this,"Added it to your collection",Toast.LENGTH_SHORT).show();
+                sendRequestforAdd(song_Id);
+                Toast.makeText(MusicActivity.this,"Added it to your collection",Toast.LENGTH_SHORT).show();
                 break;
             case R.id.Yesterday:
-                Toast.makeText(this,"The song recommended yesterday",Toast.LENGTH_SHORT).show();
+                if(now_pointer>0) {
+                    now_pointer--;
+                    song_Id = song_list[now_pointer];
+                    Toast.makeText(MusicActivity.this, "Last one", Toast.LENGTH_SHORT).show();
+                    webview_show(song_Id);
+                }
+                else{
+                    Toast.makeText(MusicActivity.this, "No more", Toast.LENGTH_SHORT).show();
+                }
                 break;
             case R.id.tomorrow:
-                Toast.makeText(this,"The song will be recommended tomorrow",Toast.LENGTH_SHORT).show();
+                now_pointer++;
+                song_Id = song_list[now_pointer];
+                Toast.makeText(MusicActivity.this,"Next one",Toast.LENGTH_SHORT).show();
+                webview_show(song_Id);
                 break;
             default:
         }
@@ -168,6 +253,106 @@ public class MusicActivity extends AppCompatActivity{
 
     private void webview_show(int Id){
         webView.loadUrl("http://wlsx.huyunfan.cn/music.php?Id="+Id);
+        introduction_view.loadUrl("http://wlsx.huyunfan.cn/article.php?Id="+Id);
+    }
+
+    /*
+    *添加用户喜好专用，无返回
+     */
+    private  void sendRequestforAdd(final int song_Id){
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                HttpURLConnection connection = null;
+                BufferedReader reader = null;
+                try{
+                    URL url = new URL("http://wlsx.huyunfan.cn/renew.php");
+                    connection = (HttpURLConnection)url.openConnection();
+                    connection.setRequestMethod("POST");
+                    connection.setConnectTimeout(8000);
+                    connection.setReadTimeout(8000);
+
+                    DataOutputStream out = new DataOutputStream(connection.getOutputStream());
+                    out.writeBytes("APP_PWD=wlsx123&uid="+usr_id+"&item_id="+ song_Id);
+
+                    InputStream in = connection.getInputStream();
+
+                    reader = new BufferedReader(new InputStreamReader(in));
+                    StringBuilder response = new StringBuilder();
+                    String line;
+                    while((line=reader.readLine())!=null){
+                        response.append(line);
+                    }
+                    Toast.makeText(MusicActivity.this,response.toString(),Toast.LENGTH_LONG).show();
+                    add_recommend(response.toString());
+
+                }catch (Exception e)
+                {
+                    e.printStackTrace();
+                }finally {
+                    if(reader!=null){
+                        try{
+                            reader.close();
+                        }catch (IOException e){
+                            e.printStackTrace();
+                        }
+                    }
+                    if(connection!=null)
+                    {
+                        connection.disconnect();
+                    }
+                }
+            }
+        }).start();
+    }
+    /*
+    *推荐功能专用请求，返回推荐的歌曲Id
+     */
+    private void sendRequestforRecommend(){
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                HttpURLConnection connection = null;
+                BufferedReader reader = null;
+                try{
+                    URL url = new URL("http://wlsx.huyunfan.cn/recommend.php");
+                    connection = (HttpURLConnection)url.openConnection();
+                    connection.setRequestMethod("POST");
+                    connection.setConnectTimeout(8000);
+                    connection.setReadTimeout(8000);
+
+                    DataOutputStream out = new DataOutputStream(connection.getOutputStream());
+                    out.writeBytes("APP_PWD=wlsx123&id="+usr_id);
+
+                    InputStream in = connection.getInputStream();
+
+                    reader = new BufferedReader(new InputStreamReader(in));
+                    StringBuilder response = new StringBuilder();
+                    String line;
+                    while((line=reader.readLine())!=null){
+                        response.append(line);
+                    }
+                    Toast.makeText(MusicActivity.this,response.toString(),Toast.LENGTH_LONG).show();
+                    add_recommend(response.toString());
+
+                }catch (Exception e)
+                {
+                    e.printStackTrace();
+                }finally {
+                    if(reader!=null){
+                        try{
+                            reader.close();
+                        }catch (IOException e){
+                            e.printStackTrace();
+                        }
+                    }
+                    if(connection!=null)
+                    {
+                        connection.disconnect();
+                    }
+                }
+            }
+        }).start();
     }
     /*
     *搜索功能专用请求，返回搜到的页面Id
@@ -217,6 +402,15 @@ public class MusicActivity extends AppCompatActivity{
         }).start();
     }
 
+    /*
+    *请求推荐专用，返回的推荐歌曲Id存放在song_list中
+     */
+    private void add_recommend(final String str){
+        String []num = str.split(" ");
+        for(int i=0;i<num.length;i++)
+        song_list[i+now_pointer]=StrtoInt(num[i]);
+        Toast.makeText(MusicActivity.this,num[0],Toast.LENGTH_LONG).show();
+    }
     /*
     *保存歌曲的编号
      */
