@@ -7,11 +7,18 @@
         android:id="@+id/edit_text"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginLeft="35dp"
+        android:layout_marginLeft="5dp"
         android:hint="Type songs here"
         android:maxLines="2"/>
     <Button
+        android:id="@+id/button_search"
         android:layout_width="30dp"
         android:layout_height="30dp"
-        android:background="@drawable/ic_search"/>
+        android:background="@drawable/ic_search"
+        android:layout_gravity="right"
+        android:layout_alignBaseline="@+id/edit_text"
+        android:layout_alignBottom="@+id/edit_text"
+        android:layout_alignParentRight="true"
+        android:layout_alignParentEnd="true" />
+
 </RelativeLayout>
